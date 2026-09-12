@@ -1,5 +1,7 @@
 # Yandex Webmaster MCP
 
+![Webmaster analytics connected to an AI agent through MCP](docs/assets/hero.png)
+
 **Direct Webmaster access for AI agents.**
 
 [![Tests](https://github.com/tenqz/yandex-webmaster-mcp/actions/workflows/tests.yml/badge.svg)](https://github.com/tenqz/yandex-webmaster-mcp/actions/workflows/tests.yml)
