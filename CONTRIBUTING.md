@@ -16,16 +16,11 @@ Run container integration checks with `make docker-test`. Tests use fixtures and
 
 Follow [ACDD](https://opatsay.com/ru/atomarnye-kommity-acdd):
 
-- Keep changes **small and atomic**: one commit = one complete, verified outcome; include all files required for that outcome
-- Every published commit must build and pass the checks present at that point
-- Keep a bug fix and its regression test together; separate passing characterization tests are welcome
-- Update mutually dependent tooling/configuration in the same commit
-- Prefer one file per commit when that file delivers a self-contained, verifiable change
-- Keep multiple files together only when they are required for the same complete step; explain that dependency in the commit body
-- Split independent changes even when they touch the same file
-- Write the intended step before editing, verify it, then commit before starting the next step
-- Review every commit in order before merging
-- Prefer small, focused pull requests
+- Every commit changes exactly one file, including tests, dependencies, configuration and permissions.
+- Keep each intermediate commit buildable; split cross-file work into compatible steps.
+- Commit regression tests separately immediately after the verified fix.
+- Never squash a multi-file pull request into one commit. Preserve the single-file sequence.
+- Verify each step before committing; review every commit before merging.
 
 ## Mandatory Comments and Tests
 
