@@ -11,6 +11,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -121,7 +122,13 @@ func (c *Client) doJSON(req *http.Request, dest any) (finalErr error) {
 			return contextFailure(ctx.Err())
 		}
 	}
-	for attempt := 0; attempt < opts.MaxAttempts; attempt++ {
+	// Recrawl submission is not idempotent; a lost response must never trigger a replay.
+	replayable := !(req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/recrawl/queue"))
+	attempts := opts.MaxAttempts
+	if !replayable {
+		attempts = 1
+	}
+	for attempt := 0; attempt < attempts; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return contextFailure(err)
 		}
@@ -184,7 +191,11 @@ func (c *Client) doJSON(req *http.Request, dest any) (finalErr error) {
 			}
 			failure = &RequestError{Kind: kind, Status: resp.StatusCode, Retryable: resp.StatusCode == 429 || resp.StatusCode == 500 || resp.StatusCode == 502 || resp.StatusCode == 503 || resp.StatusCode == 504, RetryAfterSeconds: retryAfter(resp.Header.Get("Retry-After"), time.Now())}
 		}
-		if !failure.Retryable || attempt+1 == opts.MaxAttempts {
+		if !replayable && failure.Retryable {
+			failure.Kind = "outcome_unknown"
+			failure.Retryable = false
+		}
+		if !failure.Retryable || attempt+1 == attempts {
 			return failure
 		}
 		delay := time.Duration(100*(1<<min(attempt, 5)))*time.Millisecond + time.Duration(rand.IntN(100))*time.Millisecond
