@@ -100,6 +100,17 @@ func (c *Client) postJSON(ctx context.Context, endpoint string, body any, dest a
 }
 
 func (c *Client) doJSON(req *http.Request, dest any) (finalErr error) {
+	// A transport timeout can occur after the server accepted a write.
+	dispatched := false
+	defer func() {
+		if dispatched && req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/recrawl/queue") {
+			var failure *RequestError
+			if errors.As(finalErr, &failure) && (failure.Retryable || failure.Kind == "cancelled" || failure.Kind == "invalid_response" || failure.Kind == "response_too_large") {
+				failure.Kind = "outcome_unknown"
+				failure.Retryable = false
+			}
+		}
+	}()
 	opts := c.options.defaults()
 	ctx, cancel := context.WithTimeout(req.Context(), opts.RequestTimeout)
 	defer cancel()
@@ -143,6 +154,7 @@ func (c *Client) doJSON(req *http.Request, dest any) (finalErr error) {
 			}
 			clone.Body = body
 		}
+		dispatched = true
 		resp, err := c.http.Do(clone)
 		var failure *RequestError
 		if err != nil {
