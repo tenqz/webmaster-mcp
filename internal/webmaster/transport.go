@@ -123,7 +123,7 @@ func (c *Client) doJSON(req *http.Request, dest any) (finalErr error) {
 		}
 	}
 	// Recrawl submission is not idempotent; a lost response must never trigger a replay.
-	replayable := !(req.Method == http.MethodPost && strings.HasSuffix(req.URL.Path, "/recrawl/queue"))
+	replayable := req.Method != http.MethodPost || !strings.HasSuffix(req.URL.Path, "/recrawl/queue")
 	attempts := opts.MaxAttempts
 	if !replayable {
 		attempts = 1
