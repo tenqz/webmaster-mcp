@@ -20,23 +20,50 @@ type Client struct {
 	slots   chan struct{}
 	mu      sync.Mutex
 	userID  int64
+	loading chan struct{}
 }
 
+// user shares successful discovery without holding a mutex during network I/O.
 func (c *Client) user(ctx context.Context) (int64, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.userID != 0 {
-		return c.userID, nil
+	for {
+		if err := ctx.Err(); err != nil {
+			return 0, contextFailure(err)
+		}
+		c.mu.Lock()
+		if c.userID != 0 {
+			id := c.userID
+			c.mu.Unlock()
+			return id, nil
+		}
+		if pending := c.loading; pending != nil {
+			c.mu.Unlock()
+			select {
+			case <-ctx.Done():
+				return 0, contextFailure(ctx.Err())
+			case <-pending:
+				continue
+			}
+		}
+		pending := make(chan struct{})
+		c.loading = pending
+		c.mu.Unlock()
+		var user User
+		err := c.getJSON(ctx, c.baseURL+"/user/", &user)
+		if err == nil && user.UserID == 0 {
+			err = &RequestError{Kind: "invalid_response"}
+		}
+		c.mu.Lock()
+		if err == nil {
+			c.userID = user.UserID
+		}
+		c.loading = nil
+		close(pending)
+		c.mu.Unlock()
+		if err != nil {
+			return 0, fmt.Errorf("get user: %w", err)
+		}
+		return user.UserID, nil
 	}
-	var user User
-	if err := c.getJSON(ctx, c.baseURL+"/user/", &user); err != nil {
-		return 0, fmt.Errorf("get user: %w", err)
-	}
-	if user.UserID == 0 {
-		return 0, &RequestError{Kind: "invalid_response"}
-	}
-	c.userID = user.UserID
-	return c.userID, nil
 }
 
 func (c *Client) hostURL(ctx context.Context, hostID, suffix string, query url.Values) (string, error) {
@@ -52,6 +79,8 @@ func (c *Client) hostURL(ctx context.Context, hostID, suffix string, query url.V
 }
 
 func (c *Client) hostGet(ctx context.Context, hostID, suffix string, query url.Values) (Payload, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.options.defaults().RequestTimeout)
+	defer cancel()
 	endpoint, err := c.hostURL(ctx, hostID, suffix, query)
 	if err != nil {
 		return nil, err
@@ -64,6 +93,8 @@ func (c *Client) hostGet(ctx context.Context, hostID, suffix string, query url.V
 }
 
 func (c *Client) hostPost(ctx context.Context, hostID, suffix string, body any) (Payload, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.options.defaults().RequestTimeout)
+	defer cancel()
 	endpoint, err := c.hostURL(ctx, hostID, suffix, nil)
 	if err != nil {
 		return nil, err
@@ -109,6 +140,8 @@ func setPaging(values url.Values, limit, offset int) {
 
 // GetUser returns the OAuth token owner.
 func (c *Client) GetUser(ctx context.Context) (User, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.options.defaults().RequestTimeout)
+	defer cancel()
 	userID, err := c.user(ctx)
 	if err != nil {
 		return User{}, err
@@ -118,6 +151,8 @@ func (c *Client) GetUser(ctx context.Context) (User, error) {
 
 // ListHosts returns sites added to Webmaster for the token owner.
 func (c *Client) ListHosts(ctx context.Context) ([]Host, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.options.defaults().RequestTimeout)
+	defer cancel()
 	userID, err := c.user(ctx)
 	if err != nil {
 		return nil, err
