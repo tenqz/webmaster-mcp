@@ -66,3 +66,27 @@ func schemaFor[T any]() *jsonschema.Schema {
 func objectSchema() *jsonschema.Schema {
 	return &jsonschema.Schema{Type: "object", AdditionalProperties: &jsonschema.Schema{}}
 }
+
+// reportSchema documents stable fields while preserving upstream extensions and missing values.
+func reportSchema(name string) *jsonschema.Schema {
+	s := objectSchema()
+	number := func(description string) *jsonschema.Schema {
+		return &jsonschema.Schema{Type: "number", Description: description}
+	}
+	switch name {
+	case "get_summary":
+		s.Properties = map[string]*jsonschema.Schema{
+			"sqi":                    number("Site Quality Index; absent means unavailable"),
+			"searchable_pages_count": number("Pages in search; count, not traffic"),
+			"excluded_pages_count":   number("Excluded pages count"),
+			"site_problems":          objectSchema(),
+		}
+	case "get_query_history":
+		s.Properties = map[string]*jsonschema.Schema{"indicators": {Type: "object", Description: "Source indicator names mapped to dated observations; preserve source dates and missing indicators", AdditionalProperties: &jsonschema.Schema{Type: "array", Items: objectSchema()}}}
+	case "get_popular_queries":
+		s.Properties = map[string]*jsonschema.Schema{"count": number("Provider count, not a guarantee of exhaustive query coverage"), "queries": {Type: "array", Items: objectSchema()}}
+	case "get_diagnostics":
+		s.Properties = map[string]*jsonschema.Schema{"problems": objectSchema()}
+	}
+	return s
+}
