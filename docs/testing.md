@@ -8,4 +8,4 @@ The HTTP integration tests use the real MCP SDK, bearer middleware and Webmaster
 
 For live acceptance, configure your own Yandex token and HTTPS endpoint, then run `MCP_AUTH_TOKEN=... bin/mcp-server --smoke https://your-host/mcp`. Demo tests do not prove Yandex permissions, DNS/TLS configuration or a particular desktop client's behavior. Do not supply real credentials to PR workflows.
 
-ACDD requires reviewing and checking each commit, not just the branch tip. Include the regression test with its fix and keep dependent configuration changes together.
+ACDD requires exactly one file per commit. Verify source changes first, then add regression tests in a separate passing commit.
