@@ -13,6 +13,7 @@ import (
 // Config holds process-wide settings loaded from the environment.
 // It is the only place that reads OS environment variables.
 type Config struct {
+	ReadOnly       bool
 	Demo           bool
 	RequestTimeout time.Duration
 	MaxConcurrent  int
@@ -35,13 +36,22 @@ type Config struct {
 // Load reads configuration from environment variables and applies defaults.
 // It returns an error when a production-unsafe combination is detected.
 func Load() (Config, error) {
+	authToken, err := Secret("MCP_AUTH_TOKEN")
+	if err != nil {
+		return Config{}, err
+	}
+	yandexToken, err := Secret("YANDEX_WEBMASTER_TOKEN")
+	if err != nil {
+		return Config{}, err
+	}
 	cfg := Config{
+		ReadOnly:      truthy(os.Getenv("MCP_READ_ONLY")),
 		Demo:          truthy(os.Getenv("MCP_DEMO")),
 		Addr:          envOr("HTTP_ADDR", ":8080"),
 		MCPPath:       envOr("MCP_PATH", "/mcp"),
-		AuthToken:     os.Getenv("MCP_AUTH_TOKEN"),
+		AuthToken:     authToken,
 		AllowInsecure: truthy(os.Getenv("MCP_ALLOW_INSECURE")),
-		YandexToken:   strings.TrimSpace(os.Getenv("YANDEX_WEBMASTER_TOKEN")),
+		YandexToken:   yandexToken,
 		YandexBaseURL: envOr("YANDEX_WEBMASTER_BASE_URL", "https://api.webmaster.yandex.net/v4"),
 	}
 
@@ -118,4 +128,20 @@ func boundedInt(name string, fallback, minValue, maxValue int) (int, error) {
 		return 0, fmt.Errorf("%s must be between %d and %d", name, minValue, maxValue)
 	}
 	return value, nil
+}
+
+// Secret reads an environment secret or a mounted secret file, never both.
+func Secret(name string) (string, error) {
+	value, path := os.Getenv(name), os.Getenv(name+"_FILE")
+	if value != "" && path != "" {
+		return "", fmt.Errorf("set only %s or %s_FILE", name, name)
+	}
+	if path != "" {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("cannot read %s_FILE", name)
+		}
+		value = string(data)
+	}
+	return strings.TrimSpace(value), nil
 }
