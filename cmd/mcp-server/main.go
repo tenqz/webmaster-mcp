@@ -38,7 +38,12 @@ func main() {
 		return
 	}
 	if *smokeURL != "" {
-		if err := smoke(*smokeURL, os.Getenv("MCP_AUTH_TOKEN")); err != nil {
+		token, err := config.Secret("MCP_AUTH_TOKEN")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if err := smoke(*smokeURL, token); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -62,7 +67,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	mcpServer := mcpserver.New(api)
+	mcpServer := mcpserver.New(api, cfg.ReadOnly)
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
 		return mcpServer
 	}, &mcp.StreamableHTTPOptions{Stateless: true})
