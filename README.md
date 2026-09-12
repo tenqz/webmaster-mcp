@@ -108,3 +108,13 @@ The release workflow verifies a `v1.0.0` tag against the binary version, checks 
 ## Contact
 
 Website: [opatsay.com](https://opatsay.com/)
+
+## Automated collectors
+
+Set `MCP_READ_ONLY=true` for SEO Agent: the catalog has 33 tools and direct calls to `submit_recrawl` are rejected. The default remains compatible with interactive clients (34 tools).
+
+Use `MCP_AUTH_TOKEN_FILE` and `YANDEX_WEBMASTER_TOKEN_FILE` for mounted secrets; unset the corresponding inline environment variables. Providing both is a configuration error. The built-in `--smoke` supports both catalogs and file-based MCP authentication.
+
+Recrawl submissions are never automatically retried. `outcome_unknown` means the remote server may have accepted the request: inspect the recrawl queue before deciding whether to resubmit.
+
+See [report contracts](docs/reports.md) for automated ingestion.
