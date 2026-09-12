@@ -17,4 +17,4 @@ The server uses stateless Streamable HTTP and has no persistent application data
 
 Cancellation covers queued work and upstream requests. Bounded concurrency, retries, request bodies and response bodies constrain resource use. This is suitable for a self-hosted owner or trusted team; no throughput benchmark is claimed.
 
-ACDD describes development history rather than package structure. Each commit must deliver one complete outcome with its tests and dependent files, and pass the checks available at that point.
+ACDD requires exactly one file per commit, including tests and dependent configuration. Use compatible intermediate steps and preserve the sequence during integration.
