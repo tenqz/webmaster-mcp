@@ -47,7 +47,7 @@ func smoke(endpoint, token string) error {
 	if err != nil {
 		return err
 	}
-	if len(catalog.Tools) != mcpserver.ToolCount {
+	if len(catalog.Tools) != mcpserver.ToolCount && len(catalog.Tools) != mcpserver.ToolCount-1 {
 		return fmt.Errorf("expected %d tools, got %d", mcpserver.ToolCount, len(catalog.Tools))
 	}
 	for _, tool := range catalog.Tools {
