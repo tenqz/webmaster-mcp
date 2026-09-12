@@ -19,7 +19,7 @@ func TestReadOnlyServerRejectsDirectRecrawl(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 	list, err := session.ListTools(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
